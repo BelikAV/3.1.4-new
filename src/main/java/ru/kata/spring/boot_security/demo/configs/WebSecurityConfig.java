@@ -32,6 +32,7 @@ public class WebSecurityConfig {
                         .requestMatchers("/user").hasAnyRole("USER", "ADMIN")
                         .anyRequest().authenticated()
                 )
+                .httpBasic(httpB -> {})
                 .formLogin(form -> form
                         .loginPage("/login")
                         .loginProcessingUrl("/login")
