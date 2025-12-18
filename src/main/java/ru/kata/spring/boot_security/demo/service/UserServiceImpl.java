@@ -8,7 +8,6 @@ import ru.kata.spring.boot_security.demo.model.User;
 import ru.kata.spring.boot_security.demo.repository.RoleRepository;
 import ru.kata.spring.boot_security.demo.repository.UserRepository;
 
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -48,10 +47,10 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void saveUser(User user) {
         if (user.getRoles() == null || user.getRoles().isEmpty()) {
-            Role userRole = roleRepository.findByName("ROLE_USER");
-            if (userRole != null) {
-                user.setRoles(Collections.singleton(userRole));
-            }
+            throw new IllegalArgumentException("Roles must be specified for new user");
+        }
+        if (user.getPassword() == null || user.getPassword().isBlank()) {
+            throw new IllegalArgumentException("Password must not be empty for new user");
         }
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         userRepository.save(user);
@@ -94,6 +93,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public Set<Role> mapRoleNames(String[] roleNames) {
         Set<Role> roles = new HashSet<>();
+        if (roleNames == null) return roles;
         for (String r : roleNames) {
             Role role = roleRepository.findByName("ROLE_" + r); // ADMIN -> ROLE_ADMIN
             if (role != null) {

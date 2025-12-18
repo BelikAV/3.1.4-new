@@ -27,12 +27,13 @@ public class WebSecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/login").permitAll()
+                        .requestMatchers("/login", "/register").permitAll()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/user").hasAnyRole("USER", "ADMIN")
                         .anyRequest().authenticated()
                 )
-                .httpBasic(httpB -> {})
+                .httpBasic(httpBasic -> {})   // для Postman (Basic Auth)
                 .formLogin(form -> form
                         .loginPage("/login")
                         .loginProcessingUrl("/login")
@@ -49,7 +50,6 @@ public class WebSecurityConfig {
                 .csrf(csrf -> csrf.disable());
         return http.build();
     }
-
 
     @Bean
     public DaoAuthenticationProvider authProvider() {

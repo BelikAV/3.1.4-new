@@ -36,19 +36,30 @@
                 </li>
             </ul>
             <div class="tab-content" id="adminTabsContent">
+                <!-- Таблица пользователей -->
                 <div class="tab-pane fade show active p-3" id="users">
                     <h5>All users <span class="badge bg-primary" id="usersCount">0</span></h5>
                     <div class="table-responsive">
                         <table class="table table-striped" id="usersTable">
                             <thead class="table-dark">
-                            <tr><th>ID</th><th>Username</th><th>Name</th><th>Age</th><th>Email</th><th>Actions</th></tr>
+                            <tr>
+                                <th>ID</th>
+                                <th>Username</th>
+                                <th>Name</th>
+                                <th>Age</th>
+                                <th>Email</th>
+                                <th>Roles</th>
+                                <th>Actions</th>
+                            </tr>
                             </thead>
                             <tbody id="usersTbody">
-                            <tr><td colspan="6" class="text-center">Загрузка...</td></tr>
+                            <tr><td colspan="7" class="text-center">Загрузка...</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
+
+                <!-- Новый пользователь -->
                 <div class="tab-pane fade p-3" id="newuser">
                     <h5>Add new user</h5>
                     <form id="addUserForm">
@@ -75,6 +86,13 @@
                                 <div class="mb-3">
                                     <label class="form-label">Email</label>
                                     <input type="email" class="form-control" id="addEmail">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Role</label>
+                                    <select id="addRoles" class="form-select" multiple>
+                                        <option value="ADMIN">ADMIN</option>
+                                        <option value="USER" selected>USER</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
@@ -116,6 +134,13 @@
                     <div class="mb-3">
                         <label class="form-label">Password (leave empty)</label>
                         <input type="password" class="form-control" id="editPassword">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Role</label>
+                        <select id="editRoles" class="form-select" multiple>
+                            <option value="ADMIN">ADMIN</option>
+                            <option value="USER">USER</option>
+                        </select>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -159,10 +184,8 @@
 
 <script>
     let users = [];
-    console.log('JS загружен!'); // ← Проверь в F12 Console
 
     $(document).ready(function() {
-        console.log('DOM готов!');
         loadUsers();
 
         $('#addUserForm').on('submit', function(e) {
@@ -177,24 +200,27 @@
             e.preventDefault();
             confirmDelete();
         });
+
+        // авто‑обновление раз в 10 секунд (опционально)
+        setInterval(loadUsers, 10000);
     });
 
+    function getSelectedRoles(selectId) {
+        return Array.from(document.getElementById(selectId).selectedOptions)
+            .map(o => o.value); // ["ADMIN","USER"]
+    }
+
     function loadUsers() {
-        console.log('Загрузка пользователей...');
         fetch('/api/admin/users')
-            .then(response => {
-                console.log('Response status:', response.status);
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
-                console.log('Данные:', data);
                 users = data;
                 updateTable();
                 $('#usersCount').text(users.length);
             })
             .catch(error => {
                 console.error('Fetch error:', error);
-                $('#usersTbody').html('<tr><td colspan="6" class="text-danger text-center">Ошибка API</td></tr>');
+                $('#usersTbody').html('<tr><td colspan="7" class="text-danger text-center">Ошибка API</td></tr>');
             });
     }
 
@@ -203,11 +229,14 @@
         tbody.empty();
 
         if (users.length === 0) {
-            tbody.html('<tr><td colspan="6" class="text-center">Нет пользователей</td></tr>');
+            tbody.html('<tr><td colspan="7" class="text-center">Нет пользователей</td></tr>');
             return;
         }
 
         users.forEach(user => {
+            const rolesText = (user.roles || [])
+                .map(r => r.name.replace('ROLE_',''))
+                .join(' ');
             tbody.append(`
             <tr>
                 <td>${user.id}</td>
@@ -215,6 +244,7 @@
                 <td>${user.name}</td>
                 <td>${user.age}</td>
                 <td>${user.email || ''}</td>
+                <td>${rolesText}</td>
                 <td>
                     <button class="btn btn-warning btn-sm me-1" onclick="editUser(${user.id})">Edit</button>
                     <button class="btn btn-danger btn-sm" onclick="showDeleteModal(${user.id})">Delete</button>
@@ -226,12 +256,19 @@
 
     function editUser(id) {
         const user = users.find(u => u.id == id);
+        if (!user) return;
         $('#editId').val(user.id);
         $('#editUsername').val(user.username);
         $('#editName').val(user.name);
         $('#editAge').val(user.age);
         $('#editEmail').val(user.email || '');
         $('#editPassword').val('');
+
+        const select = document.getElementById('editRoles');
+        Array.from(select.options).forEach(o => {
+            o.selected = (user.roles || []).some(r => r.name === 'ROLE_' + o.value);
+        });
+
         $('#editModal').modal('show');
     }
 
@@ -241,10 +278,10 @@
             username: $('#editUsername').val(),
             name: $('#editName').val(),
             age: parseInt($('#editAge').val()),
-            email: $('#editEmail').val()
+            email: $('#editEmail').val(),
+            password: $('#editPassword').val(),
+            roleNames: getSelectedRoles('editRoles')
         };
-        const password = $('#editPassword').val();
-        if (password) userData.password = password;
 
         fetch(`/api/admin/users/${id}`, {
             method: 'PUT',
@@ -262,6 +299,7 @@
 
     function showDeleteModal(id) {
         const user = users.find(u => u.id == id);
+        if (!user) return;
         $('#deleteId').val(user.id);
         $('#deleteUsername').val(user.username);
         $('#deleteName').val(user.name);
@@ -288,7 +326,8 @@
             password: $('#addPassword').val(),
             name: $('#addName').val(),
             age: parseInt($('#addAge').val()),
-            email: $('#addEmail').val()
+            email: $('#addEmail').val(),
+            roleNames: getSelectedRoles('addRoles')
         };
 
         fetch('/api/admin/users', {
@@ -304,28 +343,6 @@
             }
         }).catch(error => console.error(error));
     }
-    $(document).ready(function() {
-        console.log('DOM готов!');
-        loadUsers();
-
-        // периодическое авто‑обновление каждые 5 секунд
-        setInterval(loadUsers, 10000);
-
-        $('#addUserForm').on('submit', function(e) {
-            e.preventDefault();
-            addUser();
-        });
-
-        $('#editUserForm').on('submit', function(e) {
-            e.preventDefault();
-            saveEdit();
-        });
-
-        $('#deleteUserForm').on('submit', function(e) {
-            e.preventDefault();
-            confirmDelete();
-        });
-    });
 </script>
 </body>
 </html>
