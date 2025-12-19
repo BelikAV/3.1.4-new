@@ -30,7 +30,7 @@ public class WebSecurityConfig {
                         .requestMatchers("/login", "/register").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/user").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers("/api/user").hasAnyRole("USER", "ADMIN")
                         .anyRequest().authenticated()
                 )
                 .httpBasic(httpBasic -> {})   // для Postman (Basic Auth)
